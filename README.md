@@ -36,6 +36,40 @@
 
 ---
 
+## 怎么抓的包(方法 · 可复现)
+
+抓包工具是 **[claude-tap](https://github.com/liaohch3/claude-tap)**:一个本地反向代理,把 agent 跟后端的流量劫持到本机、逐包录进一个 sqlite 库。
+
+**1) 装工具**
+```bash
+uv tool install claude-tap      # 或 pip install claude-tap
+```
+
+**2) 把 agent 路由经过代理跑**(claude-tap 会启动本地代理,设好 `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL` 把客户端指过来,再把每个请求/响应录进 `~/.local/share/claude-tap/traces.sqlite3`)
+
+```bash
+# Codex CLI(非交互 exec 模式)
+claude-tap --tap-client codex --tap-no-live --tap-no-open -- \
+  exec --skip-git-repo-check "你的 prompt"
+
+# Claude Code(无头 -p 模式)
+claude-tap --tap-client claude --tap-no-live --tap-no-open -- \
+  --model claude-opus-4-8 --dangerously-skip-permissions -p "你的 prompt"
+```
+
+**3) Thinking 实验切思考档**:Codex 临时改 `~/.codex/config.toml` 的 `model_reasoning_effort = "low"` / `"xhigh"`,各抓一次再还原。
+
+**4) 导出成本仓库的 `trace_*.json`**:从 `traces.sqlite3` 取每个 session 的 records,还原 claude-tap 的"压缩格式"(大块内容按哈希存在 `record_blobs`,需按引用拼回),然后**脱敏**(token / UUID / 用户名)、**截断超大 base64**、**过滤无关的基建包**(GET /models、空 input 预热、Claude 标题生成/通知判断)。
+
+**5) 看**:`index.html` 直接 `fetch` 这些 json 渲染成带注释的实验台。本地跑:
+```bash
+python3 -m http.server 8000   # 然后浏览器开 http://localhost:8000/
+```
+
+> 说明:本仓库的 trace 是上述流程产出的**静态快照**(已脱敏),不需要你装 claude-tap 也能直接看;想自己抓新数据再按上面步骤来。
+
+---
+
 ## 目录
 
 ```
