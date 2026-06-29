@@ -80,7 +80,10 @@
   .stepdesc{font-size:15px;line-height:1.8;color:var(--ink2);margin-bottom:13px;max-width:92ch}
   .stepcard .go{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--mut);border-top:1px dashed var(--line2);padding-top:11px}
   .stepcard:hover .go{color:var(--req)}
-  .list{width:316px;flex-shrink:0;overflow-y:auto;border-right:1.5px solid var(--ink);background:linear-gradient(180deg,rgba(255,253,247,.6),rgba(244,241,233,.3))}
+  .list{width:316px;flex-shrink:0;overflow-y:auto;overflow-x:hidden;background:linear-gradient(180deg,rgba(255,253,247,.6),rgba(244,241,233,.3))}
+  .resizer{flex:0 0 6px;cursor:col-resize;background:var(--ink);position:relative;transition:background .12s}
+  .resizer:hover,.resizer.dragging{background:var(--gold)}
+  .resizer::before{content:"";position:absolute;inset:0 -4px;}
   .list::-webkit-scrollbar,.detail::-webkit-scrollbar{width:10px}
   .list::-webkit-scrollbar-thumb,.detail::-webkit-scrollbar-thumb{background:var(--line2)}
   .pk{position:relative;padding:13px 16px 13px 18px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .14s;opacity:0;animation:rise .5s cubic-bezier(.2,.7,.3,1) forwards}
@@ -157,6 +160,7 @@
   </header>
   <div class="main">
     <div class="list" id="list"></div>
+    <div class="resizer" id="resizer" title="拖拽调整宽度;拖到很窄会自动隐藏侧栏"></div>
     <div class="detail" id="detail"></div>
   </div>
   <div id="hub"></div>
@@ -366,7 +370,7 @@ function renderList(){
     const m=el('div','meta');const s=p.summary||{};
     m.append(document.createTextNode(`${s.model||''} · in ${s.input_tokens??'–'}/out ${s.output_tokens??'–'}`));m.append(document.createElement('br'));
     if((s.actions||[]).length) s.actions.forEach(a=>m.append(el('span','act',a))); else m.append(el('span','act','· 无工具调用'));
-    d.append(m);d.onclick=()=>{cur=i;_banner=null;renderList();renderDetail();};L.append(d);
+    d.append(m);d.onclick=()=>{cur=i;document.querySelectorAll('#list .pk').forEach((x,j)=>x.classList.toggle('sel',j===i));renderDetail();};L.append(d);
   });
 }
 function renderDetail(){
@@ -428,6 +432,17 @@ const _v=sp.get('v')||sp.get('agent');
 variant=(_v&&curLab().variants.some(x=>x.k===_v))?_v:curLab().variants[0].k;
 buildLabTabs();buildAgentTabs();loadCurrent();
 setMode(hasParams?'packets':'guide');
+(function(){
+  const rz=document.getElementById('resizer'),listEl=document.getElementById('list'),mainEl=document.querySelector('.main');
+  let drag=false;
+  rz.addEventListener('mousedown',e=>{drag=true;rz.classList.add('dragging');document.body.style.userSelect='none';e.preventDefault();});
+  window.addEventListener('mousemove',e=>{if(!drag)return;
+    const left=mainEl.getBoundingClientRect().left;let w=e.clientX-left;
+    if(w<120)w=0; else if(w>680)w=680;        // 小于 120 直接隐藏;最大 680
+    listEl.style.width=w+'px';});
+  window.addEventListener('mouseup',()=>{if(drag){drag=false;rz.classList.remove('dragging');document.body.style.userSelect='';}});
+  rz.addEventListener('dblclick',()=>{listEl.style.width=(listEl.offsetWidth<10?316:0)+'px';}); // 双击:在隐藏/默认宽之间切换
+})();
 </script>
 </body>
 </html>
